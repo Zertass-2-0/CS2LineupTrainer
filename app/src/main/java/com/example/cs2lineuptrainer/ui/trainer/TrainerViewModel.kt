@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.cs2lineuptrainer.CsApplication
 import com.example.cs2lineuptrainer.data.LineupRepository
+import com.example.cs2lineuptrainer.data.MapSelection
 import com.example.cs2lineuptrainer.data.ProgressRepository
 import com.example.cs2lineuptrainer.domain.Area
 import com.example.cs2lineuptrainer.domain.DEFAULT_SESSION_LENGTH
@@ -50,9 +51,12 @@ data class TrainerSession(
 data class Feedback(val hit: Boolean, val number: Int)
 
 // Всё, что нужно экрану тренировки. session == null означает экран настроек.
+// side = null значит «любая сторона»: гранаты тренируются независимо от того, за кого их бросают по задумке.
+// areas: области, которые есть у лайнапов выбранной карты (для кнопок выбора).
 data class TrainerUiState(
     val map: MapInfo,
-    val side: Side = Side.T,
+    val side: Side? = Side.T,
+    val areas: List<Area> = emptyList(),
     val area: Area? = null,
     val availableCount: Int = 0,
     val session: TrainerSession? = null,
@@ -60,25 +64,52 @@ data class TrainerUiState(
 )
 
 class TrainerViewModel(
-    lineupRepository: LineupRepository,
+    private val lineupRepository: LineupRepository,
     private val progressRepository: ProgressRepository,
     private val random: Random = Random.Default,
+    mapSelection: MapSelection = MapSelection(lineupRepository.getMaps().first().id),
 ) : ViewModel() {
 
-    private val map = lineupRepository.getMaps().first()
-    private val allLineups = lineupRepository.getLineups(map.id)
+    private var map = lineupRepository.getMap(mapSelection.selectedMapId.value)
+    private var allLineups = lineupRepository.getLineups(map.id)
 
-    private val _state = MutableStateFlow(TrainerUiState(map, availableCount = poolFor(Side.T, null).size))
+    private val _state = MutableStateFlow(
+        TrainerUiState(map, areas = areasOf(allLineups), availableCount = poolFor(Side.T, null).size),
+    )
     val state: StateFlow<TrainerUiState> = _state.asStateFlow()
 
-    // Лайнапы, подходящие под настройки: выбранная сторона и (если указана) область.
-    private fun poolFor(side: Side, area: Area?): List<Lineup> =
-        allLineups.filter { it.side == side && (area == null || it.area == area) }
+    init {
+        // Выбрали другую карту: сессия прошлой карты не нужна, область сбрасывается (на новой карте её может не быть),
+        // выбранная сторона остаётся.
+        viewModelScope.launch {
+            mapSelection.selectedMapId.collect { mapId ->
+                if (mapId != map.id) {
+                    map = lineupRepository.getMap(mapId)
+                    allLineups = lineupRepository.getLineups(mapId)
+                    val side = _state.value.side
+                    _state.value = TrainerUiState(
+                        map = map,
+                        side = side,
+                        areas = areasOf(allLineups),
+                        availableCount = poolFor(side, null).size,
+                    )
+                }
+            }
+        }
+    }
+
+    // Области, у которых есть лайнапы, в порядке объявления в Area.
+    private fun areasOf(lineups: List<Lineup>): List<Area> = Area.entries.filter { area -> lineups.any { it.area == area } }
+
+    // Лайнапы, подходящие под настройки: выбранная сторона (null = любая) и (если указана) область.
+    private fun poolFor(side: Side?, area: Area?): List<Lineup> =
+        allLineups.filter { (side == null || it.side == side) && (area == null || it.area == area) }
 
     private fun learnedIds(progress: Map<String, LineupProgress>): Set<String> =
         progress.filterValues { it.learned }.keys
 
-    fun onSideSelected(side: Side) {
+    // side = null значит «любая сторона».
+    fun onSideSelected(side: Side?) {
         _state.update { it.copy(side = side, availableCount = poolFor(side, it.area).size) }
     }
 
@@ -135,7 +166,11 @@ class TrainerViewModel(
         val Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as CsApplication
-                TrainerViewModel(app.container.lineupRepository, app.container.progressRepository)
+                TrainerViewModel(
+                    app.container.lineupRepository,
+                    app.container.progressRepository,
+                    mapSelection = app.container.mapSelection,
+                )
             }
         }
     }

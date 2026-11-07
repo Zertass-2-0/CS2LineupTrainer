@@ -54,7 +54,7 @@ class ExplorerViewModelTest {
         origin = origin,
         standView = LineupMedia.Image(0),
         aimPoint = Offset01(0.5f, 0.5f),
-        throwType = ThrowType.LMB,
+        throwType = ThrowType(),
         howTo = LineupMedia.Image(0),
         description = "",
     )

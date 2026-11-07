@@ -8,8 +8,6 @@ data class RadarCalibration(
     val sizePx: Float = 1024f,
 )
 
-val CacheCalibration = RadarCalibration(posX = -2000f, posY = 3250f, scale = 5.5f)
-
 // Переводит игровые координаты (setpos) в нормализованные координаты на радаре (0..1).
 // Ось Y инвертирована: в игре Y растёт вверх, на картинке — вниз.
 fun worldToRadar(calibration: RadarCalibration, worldX: Float, worldY: Float): Offset01 =

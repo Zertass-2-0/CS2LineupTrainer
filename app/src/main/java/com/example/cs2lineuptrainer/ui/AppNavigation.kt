@@ -1,10 +1,13 @@
 package com.example.cs2lineuptrainer.ui
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
@@ -26,6 +29,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -33,6 +38,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.cs2lineuptrainer.ui.components.MapMenu
 import com.example.cs2lineuptrainer.ui.explorer.ExplorerScreen
 import com.example.cs2lineuptrainer.ui.explorer.ExplorerViewModel
 import com.example.cs2lineuptrainer.ui.stats.StatsScreen
@@ -67,6 +73,8 @@ fun AppNavigation() {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val landscape = isLandscape()
+    val mapViewModel: MapViewModel = viewModel(factory = MapViewModel.Factory)
+    val mapState by mapViewModel.state.collectAsStateWithLifecycle()
 
     // В альбоме отступы под системные панели и вырез камеры считаем сами (Scaffold их тогда не добавляет),
     // чтобы они не учитывались дважды.
@@ -77,7 +85,7 @@ fun AppNavigation() {
         contentWindowInsets = if (landscape) WindowInsets(0, 0, 0, 0) else ScaffoldDefaults.contentWindowInsets,
     ) { innerPadding ->
         Row(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            SideRail(landscape, currentRoute, navController, safeArea)
+            SideRail(landscape, currentRoute, navController, safeArea, mapState, mapViewModel::onMapSelected)
 
             // В альбоме содержимому нужны отступы сверху, снизу и справа (там может быть камера).
             val contentInsets = if (landscape) {
@@ -88,25 +96,42 @@ fun AppNavigation() {
                 Modifier
             }
 
-            NavHost(
-                navController = navController,
-                startDestination = Tab.EXPLORER.route,
-                modifier = Modifier.weight(1f).then(contentInsets),
-            ) {
-                composable(Tab.EXPLORER.route) {
-                    val viewModel: ExplorerViewModel = viewModel(factory = ExplorerViewModel.Factory)
-                    ExplorerScreen(viewModel, onOpenStats = { navController.openTab(Tab.STATS) })
-                }
-                composable(Tab.TRAINER.route) {
-                    val viewModel: TrainerViewModel = viewModel(factory = TrainerViewModel.Factory)
-                    TrainerScreen(viewModel)
-                }
-                composable(Tab.STATS.route) {
-                    val viewModel: StatsViewModel = viewModel(factory = StatsViewModel.Factory)
-                    StatsScreen(viewModel, onOpenExplorer = { navController.openTab(Tab.EXPLORER) })
+            // MapBar в портрете рисует строку выбора карты над экраном, в альбоме ничего (там выбор в боковой панели),
+            // но стоит на месте в обеих ориентациях, как и NavHost под ним.
+            Column(modifier = Modifier.weight(1f).then(contentInsets)) {
+                MapBar(landscape, mapState, mapViewModel::onMapSelected)
+                NavHost(
+                    navController = navController,
+                    startDestination = Tab.EXPLORER.route,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    composable(Tab.EXPLORER.route) {
+                        val viewModel: ExplorerViewModel = viewModel(factory = ExplorerViewModel.Factory)
+                        ExplorerScreen(viewModel, onOpenStats = { navController.openTab(Tab.STATS) })
+                    }
+                    composable(Tab.TRAINER.route) {
+                        val viewModel: TrainerViewModel = viewModel(factory = TrainerViewModel.Factory)
+                        TrainerScreen(viewModel)
+                    }
+                    composable(Tab.STATS.route) {
+                        val viewModel: StatsViewModel = viewModel(factory = StatsViewModel.Factory)
+                        StatsScreen(viewModel, onOpenExplorer = { navController.openTab(Tab.EXPLORER) })
+                    }
                 }
             }
         }
+    }
+}
+
+// Строка выбора карты над экраном (портрет). Если карта одна или альбом, ничего не рисует.
+@Composable
+private fun MapBar(landscape: Boolean, mapState: MapPickerState, onSelect: (String) -> Unit) {
+    if (landscape || mapState.maps.size < 2) return
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.End,
+    ) {
+        MapMenu(mapState.maps, mapState.selectedId, onSelect)
     }
 }
 
@@ -133,9 +158,16 @@ private fun SideRail(
     currentRoute: String?,
     navController: NavHostController,
     safeArea: WindowInsets,
+    mapState: MapPickerState,
+    onMapSelected: (String) -> Unit,
 ) {
     if (!landscape) return
-    NavigationRail(windowInsets = safeArea.only(WindowInsetsSides.Start + WindowInsetsSides.Vertical)) {
+    NavigationRail(
+        windowInsets = safeArea.only(WindowInsetsSides.Start + WindowInsetsSides.Vertical),
+        header = {
+            if (mapState.maps.size > 1) MapMenu(mapState.maps, mapState.selectedId, onMapSelected)
+        },
+    ) {
         Tab.entries.forEach { tab ->
             NavigationRailItem(
                 selected = currentRoute == tab.route,

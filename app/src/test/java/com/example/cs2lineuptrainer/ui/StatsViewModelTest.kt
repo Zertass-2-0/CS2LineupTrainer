@@ -49,7 +49,7 @@ class StatsViewModelTest {
         origin = NamedPoint("o_$id", "o", 0.6f, 0.6f),
         standView = LineupMedia.Image(0),
         aimPoint = Offset01(0.5f, 0.5f),
-        throwType = ThrowType.LMB,
+        throwType = ThrowType(),
         howTo = LineupMedia.Image(0),
         description = "",
     )

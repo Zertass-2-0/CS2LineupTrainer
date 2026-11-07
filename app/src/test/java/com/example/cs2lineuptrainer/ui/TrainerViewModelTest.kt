@@ -12,6 +12,7 @@ import com.example.cs2lineuptrainer.domain.MapInfo
 import com.example.cs2lineuptrainer.domain.NamedPoint
 import com.example.cs2lineuptrainer.domain.Offset01
 import com.example.cs2lineuptrainer.domain.Side
+import com.example.cs2lineuptrainer.domain.MouseButtons
 import com.example.cs2lineuptrainer.domain.ThrowType
 import com.example.cs2lineuptrainer.ui.trainer.TrainerViewModel
 import kotlinx.coroutines.Dispatchers
@@ -52,7 +53,7 @@ class TrainerViewModelTest {
         aimPoint = Offset01(0.5f, 0.5f),
         tolerance = 0.05f,
         zoom = zoom,
-        throwType = ThrowType.LMB,
+        throwType = ThrowType(),
         howTo = LineupMedia.Image(0),
         description = "",
     )
@@ -157,7 +158,7 @@ class TrainerViewModelTest {
             Random(1),
         )
         vm.onStart()
-        vm.onConfirm(vm.rightMarker(), ThrowType.LMB)
+        vm.onConfirm(vm.rightMarker(), ThrowType())
         assertTrue(vm.state.value.session!!.results.single().hit)
     }
 
@@ -176,7 +177,7 @@ class TrainerViewModelTest {
         vm.onStart()
         val first = vm.state.value.session!!.current!!
 
-        vm.onConfirm(vm.rightMarker(), ThrowType.LMB)
+        vm.onConfirm(vm.rightMarker(), ThrowType())
 
         val state = vm.state.value
         assertEquals(1, state.session!!.results.size)
@@ -190,7 +191,7 @@ class TrainerViewModelTest {
     fun wrongSpot_isMiss() {
         val vm = newViewModel()
         vm.onStart()
-        vm.onConfirm(vm.wrongMarker(), ThrowType.LMB)
+        vm.onConfirm(vm.wrongMarker(), ThrowType())
         assertFalse(vm.state.value.session!!.results.first().hit)
         assertEquals(false, vm.state.value.feedback?.hit)
     }
@@ -199,7 +200,7 @@ class TrainerViewModelTest {
     fun wrongThrowType_isMissEvenWithRightSpot() {
         val vm = newViewModel()
         vm.onStart()
-        vm.onConfirm(vm.rightMarker(), ThrowType.RMB)
+        vm.onConfirm(vm.rightMarker(), ThrowType(buttons = MouseButtons.RMB))
         assertFalse(vm.state.value.session!!.results.first().hit)
     }
 
@@ -209,7 +210,7 @@ class TrainerViewModelTest {
         vm.onStart()
         repeat(DEFAULT_SESSION_LENGTH) { number ->
             // Каждый второй ответ неверный.
-            if (number % 2 == 0) vm.onConfirm(vm.rightMarker(), ThrowType.LMB) else vm.onConfirm(vm.wrongMarker(), ThrowType.LMB)
+            if (number % 2 == 0) vm.onConfirm(vm.rightMarker(), ThrowType()) else vm.onConfirm(vm.wrongMarker(), ThrowType())
         }
         val session = vm.state.value.session!!
         assertTrue(session.isFinished)
@@ -221,9 +222,9 @@ class TrainerViewModelTest {
     fun answersAfterSessionEnd_areIgnored() {
         val vm = newViewModel()
         vm.onStart()
-        repeat(DEFAULT_SESSION_LENGTH) { vm.onConfirm(vm.rightMarker(), ThrowType.LMB) }
+        repeat(DEFAULT_SESSION_LENGTH) { vm.onConfirm(vm.rightMarker(), ThrowType()) }
         // Сессия закончилась: следующего вопроса нет, лишние ответы игнорируются.
-        repeat(3) { vm.onConfirm(Offset01(0.5f, 0.5f), ThrowType.LMB) }
+        repeat(3) { vm.onConfirm(Offset01(0.5f, 0.5f), ThrowType()) }
         assertEquals(DEFAULT_SESSION_LENGTH, vm.state.value.session!!.results.size)
     }
 
@@ -232,7 +233,7 @@ class TrainerViewModelTest {
         val vm = newViewModel()
         vm.onSideSelected(Side.CT) // одна карточка: ct_mid, она повторяется во всех вопросах
         vm.onStart()
-        repeat(DEFAULT_SESSION_LENGTH) { vm.onConfirm(vm.rightMarker(), ThrowType.LMB) }
+        repeat(DEFAULT_SESSION_LENGTH) { vm.onConfirm(vm.rightMarker(), ThrowType()) }
 
         val session = vm.state.value.session!!
         assertEquals(setOf("ct_mid"), session.learnedNow)
@@ -243,7 +244,7 @@ class TrainerViewModelTest {
     fun feedbackShown_clearsFeedback() {
         val vm = newViewModel()
         vm.onStart()
-        vm.onConfirm(vm.rightMarker(), ThrowType.LMB)
+        vm.onConfirm(vm.rightMarker(), ThrowType())
         vm.onFeedbackShown()
         assertNull(vm.state.value.feedback)
     }

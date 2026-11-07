@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.cs2lineuptrainer.CsApplication
 import com.example.cs2lineuptrainer.data.LineupRepository
+import com.example.cs2lineuptrainer.data.MapSelection
 import com.example.cs2lineuptrainer.data.ProgressRepository
 import com.example.cs2lineuptrainer.domain.GrenadeType
 import com.example.cs2lineuptrainer.domain.Lineup
@@ -74,23 +75,33 @@ fun computeStats(
 }
 
 class StatsViewModel(
-    lineupRepository: LineupRepository,
+    private val lineupRepository: LineupRepository,
     progressRepository: ProgressRepository,
     private val requests: LineupRequests = LineupRequests(),
+    private val mapSelection: MapSelection = MapSelection(lineupRepository.getMaps().first().id),
 ) : ViewModel() {
 
-    private val map = lineupRepository.getMaps().first()
-    private val lineups = lineupRepository.getLineups(map.id)
     private val filter = MutableStateFlow<GrenadeType?>(null)
     private val focusedLineupId = MutableStateFlow<String?>(null)
 
-    // Пересчитывается при каждом изменении прогресса (после тренировки), смене фильтра и фокуса.
-    val state: StateFlow<StatsUiState> = combine(progressRepository.progress, filter, focusedLineupId) { progress, selected, focused ->
-        computeStats(map.name, lineups, progress, selected, focused)
+    // Считает статистику выбранной карты: название и лайнапы берутся по её id.
+    private fun statsFor(
+        mapId: String,
+        progress: Map<String, LineupProgress>,
+        selected: GrenadeType?,
+        focused: String?,
+    ): StatsUiState =
+        computeStats(lineupRepository.getMap(mapId).name, lineupRepository.getLineups(mapId), progress, selected, focused)
+
+    // Пересчитывается при каждом изменении прогресса (после тренировки), смене фильтра, фокуса и карты.
+    val state: StateFlow<StatsUiState> = combine(
+        progressRepository.progress, filter, focusedLineupId, mapSelection.selectedMapId,
+    ) { progress, selected, focused, mapId ->
+        statsFor(mapId, progress, selected, focused)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
-        initialValue = computeStats(map.name, lineups, progressRepository.progress.value, null),
+        initialValue = statsFor(mapSelection.selectedMapId.value, progressRepository.progress.value, null, null),
     )
 
     init {
@@ -98,7 +109,7 @@ class StatsViewModel(
         viewModelScope.launch {
             requests.showInStats.collect { lineupId ->
                 if (lineupId != null) {
-                    lineups.firstOrNull { it.id == lineupId }?.let { lineup ->
+                    lineupRepository.getLineups(mapSelection.selectedMapId.value).firstOrNull { it.id == lineupId }?.let { lineup ->
                         filter.value = lineup.grenade
                         focusedLineupId.value = lineup.id
                     }
@@ -128,7 +139,12 @@ class StatsViewModel(
         val Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as CsApplication
-                StatsViewModel(app.container.lineupRepository, app.container.progressRepository, app.container.lineupRequests)
+                StatsViewModel(
+                    app.container.lineupRepository,
+                    app.container.progressRepository,
+                    app.container.lineupRequests,
+                    app.container.mapSelection,
+                )
             }
         }
     }

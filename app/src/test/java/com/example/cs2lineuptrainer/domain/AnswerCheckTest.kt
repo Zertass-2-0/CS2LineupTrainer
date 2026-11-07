@@ -6,6 +6,8 @@ import org.junit.Test
 
 class AnswerCheckTest {
 
+    private val jumpThrow = ThrowType(jump = true)
+
     private val lineup = Lineup(
         id = "l",
         mapId = "m",
@@ -18,7 +20,7 @@ class AnswerCheckTest {
         standView = LineupMedia.Image(0),
         aimPoint = Offset01(0.5f, 0.5f),
         tolerance = 0.05f,
-        throwType = ThrowType.JUMP_THROW,
+        throwType = jumpThrow,
         howTo = LineupMedia.Image(0),
         description = "",
     )
@@ -31,36 +33,36 @@ class AnswerCheckTest {
 
     @Test
     fun rightSpotAndRightThrow_isHit() {
-        assertTrue(checkAnswer(lineup, centered, Offset01(0.5f, 0.5f), ThrowType.JUMP_THROW))
+        assertTrue(checkAnswer(lineup, centered, Offset01(0.5f, 0.5f), jumpThrow))
     }
 
     @Test
     fun rightSpotButWrongThrow_isMiss() {
-        assertFalse(checkAnswer(lineup, centered, Offset01(0.5f, 0.5f), ThrowType.LMB))
+        assertFalse(checkAnswer(lineup, centered, Offset01(0.5f, 0.5f), ThrowType()))
     }
 
     @Test
     fun wrongSpotButRightThrow_isMiss() {
-        assertFalse(checkAnswer(lineup, centered, Offset01(0.9f, 0.1f), ThrowType.JUMP_THROW))
+        assertFalse(checkAnswer(lineup, centered, Offset01(0.9f, 0.1f), jumpThrow))
     }
 
     @Test
     fun tapNearAimPointInsideTolerance_isHit() {
-        assertTrue(checkAnswer(lineup, centered, Offset01(0.53f, 0.5f), ThrowType.JUMP_THROW))
+        assertTrue(checkAnswer(lineup, centered, Offset01(0.53f, 0.5f), jumpThrow))
     }
 
     // tolerance задан в долях показанного окна: 0.05 окна, то есть 0.025 целого кадра.
     @Test
     fun toleranceIsMeasuredInShownWindow() {
-        assertTrue(checkAnswer(lineup, centered, Offset01(0.54f, 0.5f), ThrowType.JUMP_THROW))
-        assertFalse(checkAnswer(lineup, centered, Offset01(0.58f, 0.5f), ThrowType.JUMP_THROW))
+        assertTrue(checkAnswer(lineup, centered, Offset01(0.54f, 0.5f), jumpThrow))
+        assertFalse(checkAnswer(lineup, centered, Offset01(0.58f, 0.5f), jumpThrow))
     }
 
     @Test
     fun answerDependsOnWindow_correctSpotMovesWithIt() {
         // В сдвинутом окне правильная точка уже не в центре.
-        assertTrue(checkAnswer(lineup, shifted, Offset01(0.8f, 0.4f), ThrowType.JUMP_THROW))
-        assertFalse(checkAnswer(lineup, shifted, Offset01(0.5f, 0.5f), ThrowType.JUMP_THROW))
+        assertTrue(checkAnswer(lineup, shifted, Offset01(0.8f, 0.4f), jumpThrow))
+        assertFalse(checkAnswer(lineup, shifted, Offset01(0.5f, 0.5f), jumpThrow))
     }
 
     // Зона на экране одного размера при любом зуме: тап в одном и том же месте окна даёт тот же результат.
@@ -68,8 +70,8 @@ class AnswerCheckTest {
     fun toleranceOnScreenIsSameAtAnyZoom() {
         for (zoom in listOf(1.5f, 2f, 4f)) {
             val window = frameWindowFor(lineup.aimPoint, Offset01(0.5f, 0.5f), zoom)
-            assertTrue("zoom=$zoom", checkAnswer(lineup, window, Offset01(0.54f, 0.5f), ThrowType.JUMP_THROW))
-            assertFalse("zoom=$zoom", checkAnswer(lineup, window, Offset01(0.58f, 0.5f), ThrowType.JUMP_THROW))
+            assertTrue("zoom=$zoom", checkAnswer(lineup, window, Offset01(0.54f, 0.5f), jumpThrow))
+            assertFalse("zoom=$zoom", checkAnswer(lineup, window, Offset01(0.58f, 0.5f), jumpThrow))
         }
     }
 
@@ -80,7 +82,7 @@ class AnswerCheckTest {
         for (zoom in listOf(1f, 1.5f, 2f, 3f, 4f, 5f)) for (seed in 0 until 200) {
             val window = randomFrameWindow(lineup.aimPoint, kotlin.random.Random(seed), zoom)
             val correct = window.toLocal(lineup.aimPoint)
-            assertTrue("zoom=$zoom seed=$seed", checkAnswer(lineup, window, correct, ThrowType.JUMP_THROW))
+            assertTrue("zoom=$zoom seed=$seed", checkAnswer(lineup, window, correct, jumpThrow))
         }
     }
 
@@ -99,7 +101,17 @@ class AnswerCheckTest {
     fun customMask_isUsedInsteadOfCircle() {
         val cornerMask = HitMask { x, y -> x < 0.3f && y < 0.3f }
         // Точка (0.1, 0.1) окна centered лежит в целом кадре в (0.3, 0.3)... (граница не входит) и чуть левее - входит.
-        assertTrue(checkAnswer(lineup, centered, Offset01(0.05f, 0.05f), ThrowType.JUMP_THROW, cornerMask))
-        assertFalse(checkAnswer(lineup, centered, Offset01(0.5f, 0.5f), ThrowType.JUMP_THROW, cornerMask))
+        assertTrue(checkAnswer(lineup, centered, Offset01(0.05f, 0.05f), jumpThrow, cornerMask))
+        assertFalse(checkAnswer(lineup, centered, Offset01(0.5f, 0.5f), jumpThrow, cornerMask))
+    }
+
+    // Бросок верен только при совпадении всех четырёх частей: достаточно одной неверной.
+    @Test
+    fun anyWrongThrowPart_isMiss() {
+        val right = Offset01(0.5f, 0.5f)
+        assertFalse(checkAnswer(lineup, centered, right, jumpThrow.copy(modifier = ThrowModifier.CTRL)))
+        assertFalse(checkAnswer(lineup, centered, right, jumpThrow.copy(movement = Movement.FORWARD_RUN)))
+        assertFalse(checkAnswer(lineup, centered, right, jumpThrow.copy(jump = false)))
+        assertFalse(checkAnswer(lineup, centered, right, jumpThrow.copy(buttons = MouseButtons.LMB_RMB)))
     }
 }

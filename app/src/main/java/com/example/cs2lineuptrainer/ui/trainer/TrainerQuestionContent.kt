@@ -28,7 +28,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.cs2lineuptrainer.domain.FrameWindow
 import com.example.cs2lineuptrainer.domain.Lineup
+import com.example.cs2lineuptrainer.domain.MouseButtons
+import com.example.cs2lineuptrainer.domain.Movement
 import com.example.cs2lineuptrainer.domain.Offset01
+import com.example.cs2lineuptrainer.domain.ThrowModifier
 import com.example.cs2lineuptrainer.domain.ThrowType
 import com.example.cs2lineuptrainer.ui.components.RadarClip
 import com.example.cs2lineuptrainer.ui.components.TapTargetImage
@@ -40,6 +43,19 @@ import com.example.cs2lineuptrainer.ui.isLandscape
 private val MarkerSaver = listSaver<Offset01?, Float>(
     save = { marker -> if (marker == null) emptyList() else listOf(marker.x, marker.y) },
     restore = { values -> if (values.isEmpty()) null else Offset01(values[0], values[1]) },
+)
+
+// Как сохранить способ броска: четыре значения (имена enum, флаг прыжка). Нужен, потому что ThrowType - наш класс.
+private val ThrowTypeSaver = listSaver<ThrowType, Any>(
+    save = { listOf(it.modifier.name, it.movement.name, it.jump, it.buttons.name) },
+    restore = {
+        ThrowType(
+            modifier = ThrowModifier.valueOf(it[0] as String),
+            movement = Movement.valueOf(it[1] as String),
+            jump = it[2] as Boolean,
+            buttons = MouseButtons.valueOf(it[3] as String),
+        )
+    },
 )
 
 // Экран вопроса: подпись, кусок радара с позицией, кадр для прицеливания, выбор броска и кнопка «Подтвердить».
@@ -56,13 +72,14 @@ fun TrainerQuestionContent(
 ) {
     // rememberSaveable: выбор до подтверждения переживает поворот экрана.
     // questionNumber в списке аргументов сбрасывает маркер и бросок при переходе к следующему вопросу.
+    // Бросок сразу выбран по умолчанию (стоя, ЛКМ), поэтому «Подтвердить» ждёт только маркер.
     var marker by rememberSaveable(questionNumber, stateSaver = MarkerSaver) { mutableStateOf<Offset01?>(null) }
-    var throwType by rememberSaveable(questionNumber) { mutableStateOf<ThrowType?>(null) }
+    var throwType by rememberSaveable(questionNumber, stateSaver = ThrowTypeSaver) { mutableStateOf(ThrowType()) }
 
     val selectedMarker = marker
     val selectedThrow = throwType
-    val canConfirm = selectedMarker != null && selectedThrow != null
-    val confirm = { if (selectedMarker != null && selectedThrow != null) onConfirm(selectedMarker, selectedThrow) }
+    val canConfirm = selectedMarker != null
+    val confirm = { if (selectedMarker != null) onConfirm(selectedMarker, selectedThrow) }
 
     if (isLandscape()) {
         QuestionLandscape(
@@ -98,7 +115,7 @@ private fun QuestionPortrait(
     window: FrameWindow,
     @DrawableRes radar: Int,
     marker: Offset01?,
-    throwType: ThrowType?,
+    throwType: ThrowType,
     canConfirm: Boolean,
     onMarkerChange: (Offset01) -> Unit,
     onThrowChange: (ThrowType) -> Unit,
@@ -130,11 +147,12 @@ private fun QuestionPortrait(
             media = lineup.standView,
             window = window,
             marker = marker,
+            tolerance = lineup.tolerance,
             onTap = onMarkerChange,
         )
 
         Text("Как бросать?", style = MaterialTheme.typography.titleMedium)
-        ThrowTypeSelector(selected = throwType, onSelect = onThrowChange)
+        ThrowTypeSelector(selected = throwType, onChange = onThrowChange)
 
         Button(onClick = onConfirm, enabled = canConfirm, modifier = Modifier.fillMaxWidth()) {
             Text("Подтвердить")
@@ -152,7 +170,7 @@ private fun QuestionLandscape(
     window: FrameWindow,
     @DrawableRes radar: Int,
     marker: Offset01?,
-    throwType: ThrowType?,
+    throwType: ThrowType,
     canConfirm: Boolean,
     onMarkerChange: (Offset01) -> Unit,
     onThrowChange: (ThrowType) -> Unit,
@@ -184,7 +202,7 @@ private fun QuestionLandscape(
                 // Колонка 1: название и способ броска. «Подтвердить» закреплена внизу и всегда на виду,
                 // даже если кнопок способов броска много и они прокручиваются.
                 Column(
-                    modifier = Modifier.width(260.dp).fillMaxHeight(),
+                    modifier = Modifier.width(320.dp).fillMaxHeight(),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Column(
@@ -193,7 +211,7 @@ private fun QuestionLandscape(
                     ) {
                         Text(lineup.title, style = MaterialTheme.typography.headlineSmall)
                         Text("Как бросать?", style = MaterialTheme.typography.titleMedium)
-                        ThrowTypeSelector(selected = throwType, onSelect = onThrowChange)
+                        ThrowTypeSelector(selected = throwType, onChange = onThrowChange)
                     }
                     Button(onClick = onConfirm, enabled = canConfirm, modifier = Modifier.fillMaxWidth()) {
                         Text("Подтвердить")
@@ -209,6 +227,7 @@ private fun QuestionLandscape(
                         media = lineup.standView,
                         window = window,
                         marker = marker,
+                        tolerance = lineup.tolerance,
                         onTap = onMarkerChange,
                     )
                 }

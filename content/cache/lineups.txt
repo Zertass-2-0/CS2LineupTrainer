@@ -1,0 +1,86 @@
+[smoke_bmain_heaven]
+grenade     = smoke
+side        = t
+area        = b
+title       = Смок на Heaven с мэйна
+throw       = lmb
+origin      = b_main | B main | setpos 284.388214 -749.841248 1676.000000;setang -33.205631 139.453003 0.000000
+target      = heaven | Heaven | setpos -344.489258 -712.183777 1860.000000;setang 2.573011 16.970634 0.000000
+description = Встаньте в B main и прицельтесь в ориентир. Смок ляжет на Heaven.
+
+[smoke_sunroom_heaven]
+grenade     = smoke
+side        = t
+area        = b
+title       = Смок на Heaven с санрума
+zoom        = 4
+throw       = lmb
+origin      = sunroom_close | sunroom close corner | setpos 579.240479 -1449.972168 1676.265625;setang -35.679081 147.590576 0.000000
+target      = heaven | Heaven | setpos -344.489258 -712.183777 1860.000000;setang 2.573011 16.970634 0.000000
+description = Встаньте в sunroom, упритесь в бордюр и прицельтесь чуть правее светлого элемента на кромке стены. Смок ляжет на Heaven.
+
+[smoke_long_a_site]
+grenade     = smoke
+side        = t
+area        = a
+title       = Смок с лога на сайт
+throw       = lmb
+origin      = long_close_t | long | setpos 1315.968750 1587.953979 1768.000000;setang -54.825615 -178.309647 0.000000
+target      = a_site_center | A site | setpos 27.414381 1513.494507 1748.000000;setang 45.500950 19.310629 0.000000
+description = Встаньте в лонг, упритесь в угол и прицельтесь в ориентир. Смок ляжет на середину плента, отрезав шорт и кт.
+
+[molly_boost]
+grenade     = molotov
+side        = ct
+area        = mid
+title       = молотов на буст
+zoom        = 5
+throw       = jump + lmb
+origin      = ct_mid_right | connector exit right | setpos -275.531250 -93.582458 1728.000000;setang 0.831495 29.687302 0.000000
+target      = boost | boost | setpos 887.675171 590.295776 1875.911621;setang 82.763687 3.095856 0.000000
+description = Встаньте в коннекторе, упритесь в угол правого перила и прицельтесь в ориентир. молотов ляжет на буст.
+
+[smoke_connector]
+grenade     = smoke
+side        = t
+area        = mid
+title       = смок на коннектор с т спавна
+zoom        = 2
+throw       = forward_run + jump + lmb
+origin      = tbase_3rd_line | t base 3rd line | setpos 2716.099365 16.538013 1672.000366;setang -13.208072 -179.733963 0.000000
+target      = connector | connector | setpos -345.940308 -10.693665 1728.000000;setang 6.018160 13.886997 0.000000
+description = выровняйтесь по третьей линии зебры, с разбега бросьте в прыжке целясь в букву С
+
+[smoke_garbage_heaven]
+grenade     = smoke
+side        = t
+area        = b
+title       = Смок на Heaven с гарбейджа (труба на -2y)
+zoom        = 1.3
+howto_zoom  = 1.5
+tolerance   = 0.02
+throw       = ctrl + jump + lmb
+origin      = garbage | garbage | setpos 1399.943481 -188.033936 1676.031250;setang -53.538845 -166.397354 0.000000
+target      = heaven | Heaven | setpos -344.489258 -712.183777 1860.000000;setang 2.573011 16.970634 0.000000
+description = присядьте, поставьте угол левой трубы на отметку -2у, кидайте с прыжка
+
+[smoke_sunroom_ct]
+grenade     = smoke
+side        = t
+area        = b
+title       = Смок с санрума на кт
+throw       = jump + lmb_rmb
+origin      = sunroom_close | sunroom close corner | setpos 579.240479 -1449.972168 1676.265625;setang -35.679081 147.590576 0.000000
+target      = ct_b_help | ct_b_help | setpos -503.564941 -934.818665 1676.030640;setang 52.171982 25.896711 0.000000
+description = Встаньте в sunroom, упритесь в бордюр и прицельтесь на угловой стык над отколотой плиткой, кидайте с прыжка с двух кнопок. Смок отрежет кт.
+
+[smoke_sunroom_site]
+grenade     = smoke
+side        = t
+area        = b
+title       = Смок с санрума на плэнт
+zoom        = 1.5
+throw       = lmb
+origin      = sunroom_far | sunroom far corner | setpos 1165.968750 -1435.967285 1676.031250;setang -30.453415 167.102203 0.000000
+target      = b_plant | b_plant | setpos -5.107361 -1112.437134 1724.000000;setang 89.000000 89.288025 0.000000
+description = Встаньте в sunroom, упритесь в дальний угол и прицельтесь между окнами. Смок закроет плэнт.

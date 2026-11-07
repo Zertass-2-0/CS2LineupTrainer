@@ -21,7 +21,7 @@ import com.example.cs2lineuptrainer.ui.components.OptionChips
 @Composable
 fun TrainerSetupContent(
     state: TrainerUiState,
-    onSideSelected: (Side) -> Unit,
+    onSideSelected: (Side?) -> Unit,
     onAreaSelected: (Area?) -> Unit,
     onStart: () -> Unit,
     modifier: Modifier = Modifier,
@@ -36,17 +36,18 @@ fun TrainerSetupContent(
         Text("Карта: ${state.map.name}", style = MaterialTheme.typography.bodyLarge)
 
         Text("Сторона", style = MaterialTheme.typography.titleMedium)
-        OptionChips(
-            options = Side.entries,
+        // null в списке означает «любая сторона»: гранату можно тренировать независимо от того, за кого её бросают.
+        OptionChips<Side?>(
+            options = listOf(null) + Side.entries,
             selected = state.side,
-            label = { "За ${it.name}" },
+            label = { if (it == null) "Любая" else "За ${it.name}" },
             onSelect = onSideSelected,
         )
 
         Text("Область", style = MaterialTheme.typography.titleMedium)
         // null в списке означает «все области».
         OptionChips<Area?>(
-            options = listOf(null) + Area.entries,
+            options = listOf(null) + state.areas,
             selected = state.area,
             label = { it?.label ?: "Все" },
             onSelect = onAreaSelected,

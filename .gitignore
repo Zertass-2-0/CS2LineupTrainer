@@ -12,7 +12,9 @@ local.properties
 
 # Raw screenshots for tools/convert_lineups.py: heavy, not committed.
 # The folder itself is kept through the .gitkeep file.
-/content/screens/*
-!/content/screens/.gitkeep
+/content/*/screens/*
+!/content/*/screens/.gitkeep
+# Исходные радары карт: в репозитории лежит сжатая копия в res/drawable-nodpi (<карта>_radar.png).
+/content/*/radar.*
 
 __pycache__/

@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.cs2lineuptrainer.CsApplication
 import com.example.cs2lineuptrainer.data.LineupRepository
+import com.example.cs2lineuptrainer.data.MapSelection
 import com.example.cs2lineuptrainer.domain.GrenadeType
 import com.example.cs2lineuptrainer.domain.Lineup
 import com.example.cs2lineuptrainer.domain.MapInfo
@@ -29,17 +30,29 @@ data class ExplorerUiState(
 )
 
 class ExplorerViewModel(
-    lineupRepository: LineupRepository,
+    private val lineupRepository: LineupRepository,
     private val requests: LineupRequests = LineupRequests(),
+    mapSelection: MapSelection = MapSelection(lineupRepository.getMaps().first().id),
 ) : ViewModel() {
 
-    private val map = lineupRepository.getMaps().first()
-    private val lineups = lineupRepository.getLineups(map.id)
+    private var map = lineupRepository.getMap(mapSelection.selectedMapId.value)
+    private var lineups = lineupRepository.getLineups(map.id)
 
     private val _state = MutableStateFlow(ExplorerUiState(map))
     val state: StateFlow<ExplorerUiState> = _state.asStateFlow()
 
     init {
+        // Выбрали другую карту: показываем её с чистого листа (цели, позиции и инструкция прошлой карты не нужны).
+        viewModelScope.launch {
+            mapSelection.selectedMapId.collect { mapId ->
+                if (mapId != map.id) {
+                    map = lineupRepository.getMap(mapId)
+                    lineups = lineupRepository.getLineups(mapId)
+                    _state.value = ExplorerUiState(map)
+                }
+            }
+        }
+
         // Если из Статистики попросили открыть лайнап - открываем его и сообщаем, что запрос выполнен.
         viewModelScope.launch {
             requests.openInExplorer.collect { lineupId ->
@@ -116,7 +129,7 @@ class ExplorerViewModel(
         val Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as CsApplication
-                ExplorerViewModel(app.container.lineupRepository, app.container.lineupRequests)
+                ExplorerViewModel(app.container.lineupRepository, app.container.lineupRequests, app.container.mapSelection)
             }
         }
     }
